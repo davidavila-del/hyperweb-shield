@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hyperweb Shield Pilot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;700&family=Onest:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: vendor pilot console — risk summary strip, then application queue (left) beside threshold + pilot maths (right); stacks on phones. Deliberately light-only: white page, purple accents */
+:root{
+  --bg:#ffffff; --surface:#ffffff; --tint:#f6f1fb; --ink:#1c1325; --muted:#6b6175; --line:#ebe4f1;
+  --brand:#820ad1; --brand-ink:#ffffff; --brand-soft:#f1e6fb;
+  --ok:#1f7a45; --ok-soft:#e3f4ea; --warn:#a35f00; --warn-soft:#fcf0dc; --bad:#b4232c; --bad-soft:#fbe4e5;
+  --f-display:"Sora","Segoe UI",system-ui,sans-serif;
+  --f-body:"Onest","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 44px}
+.wrap{max-width:1160px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px 24px}
+.brand{display:flex;align-items:center;gap:12px}
+.mark{width:38px;height:38px;flex:none}
+.word{font-family:var(--f-display);font-weight:700;font-size:22px;letter-spacing:-.01em;line-height:1}
+.word small{display:block;font:500 12px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--brand);margin-top:4px}
+.meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tag{font:500 11.5px var(--f-mono);padding:4px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.tag.on{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{font:600 13px var(--f-body);padding:7px 12px;border:0;background:transparent;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--brand);color:var(--brand-ink)}
+.strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.strip div{background:var(--surface);padding:14px 16px;min-width:0}
+.strip b{display:block;font:500 24px var(--f-mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.strip span{font-size:12.5px;color:var(--muted)}
+.strip .ok b{color:var(--ok)} .strip .warn b{color:var(--warn)} .strip .bad b{color:var(--bad)}
+@media (max-width:760px){.strip{grid-template-columns:repeat(2,minmax(0,1fr))}.strip div:first-child{grid-column:1/-1}}
+.grid{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,4fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 20px;min-width:0}
+h2{font:600 17px var(--f-display);margin:0 0 4px}
+.sub{font-size:13px;color:var(--muted);margin:0 0 14px}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:560px}
+th{font:500 11px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:0 8px 8px;border-bottom:1px solid var(--line)}
+td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+.t{font-family:var(--f-mono);color:var(--muted);font-size:12px;white-space:nowrap}
+.who b{font-weight:600}
+.who span{display:block;font-size:12px;color:var(--muted)}
+.reasons{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.reasons i{font-style:normal;font-size:11.5px;padding:2px 7px;border-radius:4px;background:var(--tint);color:var(--ink)}
+.score{display:flex;align-items:center;gap:8px;font:500 13px var(--f-mono);font-variant-numeric:tabular-nums}
+.score .tr{width:54px;height:6px;background:var(--tint);border-radius:3px;overflow:hidden}
+.score .f{height:100%;border-radius:3px}
+.chip{font:600 12px var(--f-body);padding:3px 9px;border-radius:999px;white-space:nowrap;display:inline-block}
+.chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.warn{background:var(--warn-soft);color:var(--warn)} .chip.bad{background:var(--bad-soft);color:var(--bad)}
+.side{display:flex;flex-direction:column;gap:20px}
+.slider{display:grid;gap:8px}
+.slider label{display:flex;justify-content:space-between;font-size:13.5px;font-weight:500}
+.slider output{font:500 14px var(--f-mono)}
+input[type=range]{width:100%;accent-color:var(--brand)}
+.ends{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted)}
+.dist{display:flex;height:10px;border-radius:5px;overflow:hidden;margin-top:6px}
+.dist div{transition:width .3s ease}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fields label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted);font-weight:500}
+.fields input{font:500 15px var(--f-mono);color:var(--ink);background:var(--tint);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%;min-width:0}
+input:focus-visible,button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.math{margin-top:14px;display:grid;gap:6px;font-size:13.5px}
+.math div{display:flex;justify-content:space-between;gap:12px}
+.math div span:last-child{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.math .hl{border-top:1px solid var(--line);padding-top:8px;margin-top:4px;font-weight:600}
+.math .hl span:last-child{color:var(--brand);font-size:18px}
+.guard{margin:0;padding:0;list-style:none;display:grid;gap:8px;font-size:13.5px}
+.guard li{display:flex;gap:10px}
+.guard li::before{content:"";flex:none;width:8px;height:8px;border-radius:2px;background:var(--brand);margin-top:7px}
+footer{font-size:12.5px;color:var(--muted);max-width:85ch}
+@media (prefers-reduced-motion:reduce){.dist div{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
+        <rect width="40" height="40" rx="9" fill="var(--brand)"/>
+        <path d="M20 7l11 4v8.5c0 7-4.7 12-11 14.5C13.7 31.5 9 26.5 9 19.5V11z" fill="none" stroke="var(--brand-ink)" stroke-width="2.4" stroke-linejoin="round"/>
+        <path d="M14.5 20.5h3l2-5 2.6 9 2-4h3" fill="none" stroke="var(--brand-ink)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="word">Hyperweb Shield<small>Hyperweb SAS · Onboarding pilot</small></div>
+    </div>
+    <div class="meta">
+      <span class="tag">Client: Nubank Colombia · onboarding team</span>
+      <div class="seg" role="group" aria-label="Pilot mode">
+        <button type="button" id="mShadow" aria-pressed="true">Shadow mode</button>
+        <button type="button" id="mLive" aria-pressed="false">Live</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="strip" aria-label="Today's scoring summary">
+    <div><b>0.28 s</b><span>average decision time per application</span></div>
+    <div class="ok"><b id="sA">0%</b><span>auto-approved</span></div>
+    <div class="warn"><b id="sR">0%</b><span>sent to analyst review</span></div>
+    <div class="bad"><b id="sB">0%</b><span>blocked</span></div>
+    <div><b id="sF">0%</b><span>of fraud attempts stopped</span></div>
+  </section>
+
+  <div class="grid">
+    <section class="card" aria-labelledby="q">
+      <h2 id="q">New account applications</h2>
+      <p class="sub" id="qsub">Each application is scored on device, behaviour and network signals before the card is issued.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Time</th><th>Applicant</th><th>Risk</th><th>Decision</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+    </section>
+
+    <div class="side">
+      <section class="card" aria-labelledby="th">
+        <h2 id="th">Review threshold</h2>
+        <p class="sub">Scores above this go to an analyst. Scores of 85 or more are blocked.</p>
+        <div class="slider">
+          <label for="thr">Send to review from score <output id="thrOut" for="thr">60</output></label>
+          <input id="thr" type="range" min="30" max="84" step="1" value="60">
+          <div class="ends"><span>Stricter, more reviews</span><span>Looser, more approvals</span></div>
+          <div class="dist" aria-hidden="true"><div id="dA" style="background:var(--ok)"></div><div id="dR" style="background:var(--warn)"></div><div id="dB" style="background:var(--bad)"></div></div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="pm">
+        <h2 id="pm">Pilot impact per month</h2>
+        <p class="sub">Example figures for the class pitch. Change them to your team's numbers.</p>
+        <div class="fields">
+          <label for="apps">Applications<input id="apps" type="number" min="0" step="1000" value="40000"></label>
+          <label for="cur">Reviewed today (rules) %<input id="cur" type="number" min="0" max="100" step="0.5" value="8"></label>
+          <label for="quit">Quit while waiting %<input id="quit" type="number" min="0" max="100" step="1" value="30"></label>
+          <label for="price">Hyperweb fee $/month<input id="price" type="number" min="0" step="500" value="6000"></label>
+        </div>
+        <div class="math">
+          <div><span>Reviews today</span><span id="m1"></span></div>
+          <div><span>Reviews with Hyperweb</span><span id="m2"></span></div>
+          <div><span>Fewer good customers stuck</span><span id="m3"></span></div>
+          <div><span>Analyst hours freed (12 min each)</span><span id="m5"></span></div>
+          <div class="hl"><span>Extra activated customers</span><span id="m4"></span></div>
+          <div><span>Cost per extra customer</span><span id="m6"></span></div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="gr">
+        <h2 id="gr">Pilot guardrails</h2>
+        <ul class="guard">
+          <li>Weeks 1–4 in shadow mode: Hyperweb scores, our current rules still decide.</li>
+          <li>Analysts review every score in the grey zone. No customer is rejected by the model alone.</li>
+          <li>Data is anonymised and handled under Colombia's data protection law (Ley 1581).</li>
+          <li>Kill switch: we turn it off if fraud losses rise above today's level.</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <footer>Class prototype. Hyperweb SAS and its product are fictional, and every applicant, score and figure on this page is invented for illustration. Not affiliated with or endorsed by Nubank.</footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const BLOCK=85;
+// Synthetic score population (seeded): 98% genuine applicants, 2% fraud attempts
+function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const r=rng(42),POP=[];
+for(let i=0;i<20000;i++){const fraud=r()<0.02;POP.push({fraud,s:fraud?40+60*Math.sqrt(r()):70*Math.pow(r(),5)})}
+const ROWS=[
+ ["14:52:08","Laura G.","Bogotá · Android",6,["Known device","Selfie matches ID"]],
+ ["14:51:57","Jhon M.","Barranquilla · Android",93,["Device linked to 14 accounts","Emulator detected","Typing speed of a script"]],
+ ["14:51:40","Andrés P.","Medellín · iOS",12,["Known device"]],
+ ["14:51:22","Camila R.","Cali · Android",71,["Remote-access app open","Phone call active during sign-up"]],
+ ["14:51:03","Juan D.","Bogotá · iOS",57,["Address 400 km from device location"]],
+ ["14:50:49","Valentina S.","Bucaramanga · iOS",18,["New device, normal behaviour"]],
+ ["14:50:31","Diego H.","Bogotá · Android",64,["SIM changed 6 hours ago","Email created 2 days ago"]],
+ ["14:50:12","Carlos T.","Cartagena · Android",88,["ID photo reused from another application","VPN exit node"]],
+ ["14:49:55","Natalia V.","Pereira · iOS",9,["Selfie matches ID"]],
+ ["14:49:38","Felipe O.","Cali · Android",76,["Personal data pasted, not typed","3rd application from this Wi-Fi today"]],
+ ["14:49:20","Mariana C.","Medellín · Android",3,["Known device"]],
+ ["14:49:02","Sofía L.","Manizales · Android",44,["First smartphone account"]]
+];
+let shadow=true;
+const pct=x=>(x*100).toFixed(1)+"%";
+const num=x=>Math.round(x).toLocaleString("en-US");
+function decide(s,t){return s>=BLOCK?["bad","Block"]:s>=t?["warn","Review"]:["ok","Approve"]}
+function render(){
+  const t=+$("thr").value; $("thrOut").textContent=t;
+  let a=0,rv=0,b=0,fr=0,frStop=0;
+  for(const p of POP){if(p.s>=BLOCK)b++;else if(p.s>=t)rv++;else a++; if(p.fraud){fr++; if(p.s>=t)frStop++}}
+  const n=POP.length, ra=a/n, rr=rv/n, rb=b/n;
+  $("sA").textContent=pct(ra);$("sR").textContent=pct(rr);$("sB").textContent=pct(rb);$("sF").textContent=pct(frStop/fr);
+  $("dA").style.width=ra*100+"%";$("dR").style.width=rr*100+"%";$("dB").style.width=rb*100+"%";
+  $("rows").innerHTML=ROWS.map(([time,name,where,s,rs])=>{
+    const [cls,lab]=decide(s,t), col=cls==="ok"?"var(--ok)":cls==="warn"?"var(--warn)":"var(--bad)";
+    return `<tr><td class="t">${time}</td><td class="who"><b>${name}</b><span>${where}</span><div class="reasons">${rs.map(x=>`<i>${x}</i>`).join("")}</div></td>
+    <td><div class="score">${s}<div class="tr"><div class="f" style="width:${s}%;background:${col}"></div></div></div></td>
+    <td><span class="chip ${cls}">${shadow?"Would "+lab.toLowerCase():lab}</span></td></tr>`}).join("");
+  $("qsub").textContent=shadow?"Shadow mode: Hyperweb scores every application, but our current rules still make the decision.":"Live: Hyperweb's decision is applied. Analysts handle everything in review.";
+  const apps=+$("apps").value||0, cur=(+$("cur").value||0)/100, quit=(+$("quit").value||0)/100, price=+$("price").value||0;
+  const rToday=apps*cur, rNew=apps*rr, fewer=Math.max(0,rToday-rNew), extra=fewer*quit;
+  $("m1").textContent=num(rToday);$("m2").textContent=num(rNew);$("m3").textContent=num(fewer);
+  $("m4").textContent="+"+num(extra);$("m5").textContent=num(fewer*12/60)+" h";
+  $("m6").textContent=extra?"$"+(price/extra).toFixed(2):"–";
+}
+["thr","apps","cur","quit","price"].forEach(id=>$(id).addEventListener("input",render));
+function mode(s){shadow=s;$("mShadow").setAttribute("aria-pressed",s);$("mLive").setAttribute("aria-pressed",!s);render()}
+$("mShadow").addEventListener("click",()=>mode(true));$("mLive").addEventListener("click",()=>mode(false));
+render();
+</script>
+
+</body>
+</html>
